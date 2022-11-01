@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap');
+.cardTitle {
+    font-family: 'Mochiy Pop One', sans-serif;
+}
+
+#stand {
+    background-color: black;
+    width: 306px;
+    height: 31px;
+    margin: auto;
+    border-bottom-left-radius: 50px;
+    border-bottom-right-radius: 58px;
+}
+
+#line {
+    background-color: red;
+    width: 5px;
+    height: 185px;
+    margin: auto;
+}
