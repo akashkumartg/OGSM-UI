@@ -42,6 +42,7 @@ defined('MONTH')  || define('MONTH', 2592000);
 defined('YEAR')   || define('YEAR', 31536000);
 defined('DECADE') || define('DECADE', 315360000);
 
+defined('MDMAIL') || define('MDMAIL', 'hariharan.kj@cricketronics.com');
 /*
  | --------------------------------------------------------------------------
  | Exit Status Codes

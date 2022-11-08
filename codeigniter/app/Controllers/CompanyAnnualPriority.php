@@ -13,13 +13,13 @@ date_default_timezone_set("Asia/Kolkata");
 class CompanyAnnualPriority extends BaseController
 {
     public function ltpDropdown()
-    {        
+    {
         $ltp = new LongTermPriorities();
         $dropDown = $ltp
-        ->where('person_responsible',$this->request->getVar('mail'))
-        ->where('is_approved',1)
-        ->findAll();
-        
+            ->where('person_responsible', $this->request->getVar('mail'))
+            ->where('is_approved', 1)
+            ->findAll();
+
         $response = [
             'status' => 'OK',
             'data' => $dropDown,
@@ -59,20 +59,26 @@ class CompanyAnnualPriority extends BaseController
             // 'JPC_NO' => 'JCP' . $lastNo + 1
         ];
 
-        $Common = new Common();
+        $common = new Common();
         $user = new Users();
         $cap = new CompanyAnnualPriorities();
+        $ltp = new LongTermPriorities();
         $inst = $cap->insert($data);
-        $userFcmToken = $user->where('id', $this->request->getVar('user_id'))->first();
+        $ltpData = $ltp->where('id', $this->request->getVar('ltp_id'))->first();
         if ($inst) {
-            if ($userFcmToken['fcm_token']) {
-                $notifData = array(
-                    'title' => 'Company Annual Priority',
-                    'body' =>'CAP Created By ' . $userFcmToken['name'],
-                    "click_action" => 'http://localhost/ogsm/index.html?page=cap'
-                );
-                $Common->sendNotification($notifData, $userFcmToken['fcm_token']);
-            }
+            $common->initCurlGet("https://apps.t10.me/worklist/api/v1/work-item/" . $ltpData['notificationCode'] . "/completed");
+            $workCode = $common->sendUwlNotification(
+                MDMAIL,
+                $this->request->getVar('cap_title'),
+                "Company Annual Priorities",
+                "New LTP ( " . $this->request->getVar('cap_title') . " ) Created by ( " . explode('.', $this->request->getVar('created_by'))[0] . " )",
+                "site",
+                "OGSM",
+                "Company Annual Priorities",
+                "",
+                "https://apps.t10.me/ogsm/index.html?page=CAP&id=" . $ltp->getInsertID(),
+            );
+            $cap->update($cap->getInsertID(), ["notificationCode" => $workCode->data->workItemCode]);
 
             $response = [
                 'status' => 'OK',
@@ -251,15 +257,28 @@ class CompanyAnnualPriority extends BaseController
         ];
 
         $cap = new CompanyAnnualPriorities();
-        $inst = $cap
-            ->update($this->request->getVar('id'), $data);
-
+        $inst = $cap->update($this->request->getVar('id'), $data);
+        $capData = $cap->where('id', $this->request->getVar('id'))->first();
+        $common = new Common();
         if ($inst) {
             $response = [
                 'status' => 'OK',
                 'data' => $data,
                 'msg' => 'CAP Approved Successfully!'
             ];
+            $common->initCurlGet("https://apps.t10.me/worklist/api/v1/work-item/" . $capData['notificationCode'] . "/completed");
+            $workCode = $common->sendUwlNotification(
+                $capData['created_by'],
+                $capData['cap_title'],
+                "Long Term Priorities",
+                "New LTP ( " . $capData['cap_title'] . " ) Created by ( " . explode('.', $capData['created_by'])[0] . " ), , Create the JC Priority againts Company Annual Priority",
+                "site",
+                "OGSM",
+                "Long Term Priorities",
+                "",
+                "https://apps.t10.me/ogsm/index.html?page=CAP&id=" . $this->request->getVar('id'),
+            );
+            $cap->update($this->request->getVar('id'), ["notificationCode" => $workCode->data->workItemCode]);
         } else {
             $response = [
                 'status' => 'ERROR',

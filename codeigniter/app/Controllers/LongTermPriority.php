@@ -15,9 +15,9 @@ class LongTermPriority extends BaseController
     {
         $strg = new Strategies();
         $dropDown = $strg
-        ->where('is_approved',1)
-        ->where('is_confidential',0)
-        ->findAll();
+            ->where('is_approved', 1)
+            ->where('is_confidential', 0)
+            ->findAll();
         $response = [
             'status' => 'OK',
             'data' => $dropDown,
@@ -56,21 +56,26 @@ class LongTermPriority extends BaseController
             'created_date' => date('Y-m-d H:i:s')
         ];
 
-        $Common = new Common();
-        $user = new Users();
+        $common = new Common();
+        // $user = new Users();
         $ltp = new LongTermPriorities();
+        $Strategies = new Strategies();
         $inst = $ltp->insert($data);
-        $userFcmToken = $user->where('id', $this->request->getVar('user_id'))->first();
+        $strData = $Strategies->where('id', $this->request->getVar('strategie_id'))->first();
         if ($inst) {
-            if ($userFcmToken['fcm_token']) {
-                $notifData = array(
-                    'title' => 'Long Term Priority',
-                    'body' => 'LTP Created By ' . $userFcmToken['name'],
-                    "click_action" => 'http://localhost/ogsm/index.html?page=ltp'
-                );
-                $Common->sendNotification($notifData, $userFcmToken['fcm_token']);
-            }
-
+            $common->initCurlGet("https://apps.t10.me/worklist/api/v1/work-item/" . $strData['notificationCode'] . "/completed");
+            $workCode = $common->sendUwlNotification(
+                MDMAIL,
+                $this->request->getVar('ltp_title'),
+                "Long Term Priorities",
+                "New LTP ( " . $this->request->getVar('ltp_title') . " ) Created by ( " . explode('.', $this->request->getVar('created_by'))[0] . " )",
+                "site",
+                "OGSM",
+                "Long Term Priorities",
+                "",
+                "https://apps.t10.me/ogsm/index.html?page=LTP&id=" . $ltp->getInsertID(),
+            );
+            $ltp->update($ltp->getInsertID(), ["notificationCode" => $workCode->data->workItemCode]);
             $response = [
                 'status' => 'OK',
                 'data' => $data,
@@ -252,15 +257,28 @@ class LongTermPriority extends BaseController
         ];
 
         $ltp = new LongTermPriorities();
-        $inst = $ltp
-            ->update($this->request->getVar('id'), $data);
-
+        $inst = $ltp->update($this->request->getVar('id'), $data);
+        $ltpData = $ltp->where('id', $this->request->getVar('id'))->first();
+        $common = new Common();
         if ($inst) {
             $response = [
                 'status' => 'OK',
                 'data' => $data,
                 'msg' => 'LTP Approved Successfully!'
             ];
+            $common->initCurlGet("https://apps.t10.me/worklist/api/v1/work-item/" . $ltpData['notificationCode'] . "/completed");
+            $workCode = $common->sendUwlNotification(
+                $ltpData['person_responsible'],
+                $ltpData['ltp_title'],
+                "Long Term Priorities",
+                "New LTP ( " . $ltpData['ltp_title'] . " ) Created by ( " . explode('.', $ltpData['created_by'])[0] . " ), Create the Company Anuual Priority againts Long Term Priority",
+                "site",
+                "OGSM",
+                "Long Term Priorities",
+                "",
+                "https://apps.t10.me/ogsm/index.html?page=LTP&id=" . $this->request->getVar('id'),
+            );
+            $ltp->update($this->request->getVar('id'), ["notificationCode" => $workCode->data->workItemCode]);
         } else {
             $response = [
                 'status' => 'ERROR',

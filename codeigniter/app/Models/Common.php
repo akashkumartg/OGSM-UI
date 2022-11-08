@@ -6,7 +6,6 @@ use CodeIgniter\Model;
 
 class Common extends Model
 {
-
     public function sendNotification($notifData, $token)
     {
 
@@ -93,5 +92,16 @@ class Common extends Model
         } else {
             return false;
         }
+    }
+
+    public function initCurlGet($url)
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+        $result = curl_exec($ch);
+        curl_close($ch);
+        return json_decode($result);
     }
 }

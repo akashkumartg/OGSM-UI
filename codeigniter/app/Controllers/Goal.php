@@ -68,24 +68,16 @@ class Goal extends BaseController
         $inst = $goals->insert($data);
         $goalData = $goals->where('id', $goals->getInsertID())->first();
         if ($inst) {
-            if ($userFcmToken['fcm_token']) {
-                $notifData = array(
-                    'title' => 'Goal',
-                    'body' => 'Goal Created By ' . $userFcmToken['name'],
-                    "click_action" => 'http://localhost/ogsm/index.html?page=goal'
-                );
-                $Common->sendNotification($notifData, $userFcmToken['fcm_token']);
-            }
             $workCode = $Common->sendUwlNotification(
                 $this->request->getVar('person_responsible'),
                 $this->request->getVar('goal_title'),
                 "Goal",
-                "New Goal ( " . $this->request->getVar('goals') . " ) Created by ( " . explode('.', $this->request->getVar('created_by'))[0] . " )",
+                "New Goal ( " . $this->request->getVar('goal_title') . " ) Created by ( " . explode('.', $this->request->getVar('created_by'))[0] . " ), Create the Strategy againts Goal",
                 "site",
                 "OGSM",
                 "GOAL",
                 "",
-                "https://apps.t10.me/ogsm",
+                "https://apps.t10.me/ogsm/index.html?page=strategy&id=" . $goals->getInsertID(),
             );
             $goals->update($goalData['id'], ["notificationCode" => $workCode->data->workItemCode]);
             $response = [

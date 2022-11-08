@@ -68,21 +68,26 @@ class JCPriority extends BaseController
 
         $user = new Users();
         $jcp = new JCPriorities();
-        $Common = new Common();
+        $common = new Common();
+        $cap = new CompanyAnnualPriorities();
         $inst = $jcp->insert($data);
         $jcpNo = 'JCP' . $inst;
         $jcp->update($inst, array('jcp_no' => $jcpNo));
-        $userFcmToken = $user->where('id', $this->request->getVar('user_id'))->first();
+        $capData = $cap->where('id', $this->request->getVar('cap_id'))->first();
         if ($inst) {
-            if ($userFcmToken['fcm_token']) {
-                $notifData = array(
-                    'title' => 'JC Priority',
-                    'body' => 'JCP Created By ' . $userFcmToken['name'],
-                    "click_action" => 'http://localhost/ogsm/index.html?page=jcp'
-                );
-                $Common->sendNotification($notifData, $userFcmToken['fcm_token']);
-            }
-
+            $common->initCurlGet("https://apps.t10.me/worklist/api/v1/work-item/" . $capData['notificationCode'] . "/completed");
+            $workCode = $common->sendUwlNotification(
+                MDMAIL,
+                $this->request->getVar('jcp_title'),
+                "JC Priorities",
+                "New LTP ( " . $this->request->getVar('jcp_title') . " ) Created by ( " . explode('.', $this->request->getVar('created_by'))[0] . " )",
+                "site",
+                "OGSM",
+                "JC Priorities",
+                "",
+                "https://apps.t10.me/ogsm/index.html?page=JCP&id=" . $jcp->getInsertID(),
+            );
+            $jcp->update($jcp->getInsertID(), ["notificationCode" => $workCode->data->workItemCode]);
             $response = [
                 'status' => 'OK',
                 'data' => $data,

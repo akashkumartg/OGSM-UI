@@ -15,9 +15,9 @@ class Strategie extends BaseController
     {
         $strg = new Goals();
         $dropDown = $strg
-        ->where('person_responsible',$this->request->getVar('mail'))
-        ->where('is_approved',1)
-        ->findAll();
+            ->where('person_responsible', $this->request->getVar('mail'))
+            // ->where('is_approved', 1)
+            ->findAll();
         $response = [
             'status' => 'OK',
             'data' => $dropDown,
@@ -54,21 +54,27 @@ class Strategie extends BaseController
             'created_date' => date('Y-m-d H:i:s')
         ];
 
-        $Common = new Common(); 
-        $user = new Users();
+        $common = new Common();
+        // $user = new Users();
+        $goals = new Goals();
         $Strategies = new Strategies();
         $inst = $Strategies->insert($data);
-        $userFcmToken = $user->where('id', $this->request->getVar('user_id'))->first();
-        if ($inst) {
-            if ($userFcmToken['fcm_token']) {
-                $notifData = array(
-                    'title' => 'Strategy',
-                    'body' => 'Strategy Created By ' . $userFcmToken['name'],
-                    "click_action" => 'http://localhost/ogsm/index.html?page=strategie'
-                );
-                $Common->sendNotification($notifData, $userFcmToken['fcm_token']);
-            }
 
+        $goalData = $goals->where('id', $this->request->getVar('goal_id'))->first();
+        if ($inst) {
+            $common->initCurlGet("https://apps.t10.me/worklist/api/v1/work-item/" . $goalData['notificationCode'] . "/completed");
+            $workCode = $common->sendUwlNotification(
+                MDMAIL,
+                $this->request->getVar('strategie_title'),
+                "Strategie",
+                "New Strategie ( " . $this->request->getVar('strategie_title') . " ) Created by ( " . explode('.', $this->request->getVar('created_by'))[0] . " )",
+                "site",
+                "OGSM",
+                "STRATEGIE",
+                "",
+                "https://apps.t10.me/ogsm/index.html?page=strategy&id=" . $Strategies->getInsertID(),
+            );
+            $Strategies->update($Strategies->getInsertID(), ["notificationCode" => $workCode->data->workItemCode]);
             $response = [
                 'status' => 'OK',
                 'data' => $data,
@@ -83,7 +89,6 @@ class Strategie extends BaseController
         }
         return $this->response->setJSON($response);
     }
-
 
     public function get()
     {
@@ -247,15 +252,28 @@ class Strategie extends BaseController
         ];
 
         $Strategies = new Strategies();
-        $inst = $Strategies
-            ->update($this->request->getVar('id'), $data);
-
+        $inst = $Strategies->update($this->request->getVar('id'), $data);
+        $common = new Common();
+        $strData = $Strategies->where('id', $this->request->getVar('id'))->first();
         if ($inst) {
+            $common->initCurlGet("https://apps.t10.me/worklist/api/v1/work-item/" . $strData['notificationCode'] . "/completed");
+            $workCode = $common->sendUwlNotification(
+                $strData['created_by'],
+                $strData['strategie_title'],
+                "Strategie",
+                "This Strategie ( " . $strData['strategie_title'] . " ) Approved by ( MD ), Create the Long Term Priority againts Strategy",
+                "site",
+                "OGSM",
+                "STRATEGIE",
+                "",
+                "https://apps.t10.me/ogsm/index.html?page=strategy&id=" . $this->request->getVar('id'),
+            );
             $response = [
                 'status' => 'OK',
                 'data' => $data,
                 'msg' => 'Strategie Approved Successfully!'
             ];
+            $Strategies->update($this->request->getVar('id'), ["notificationCode" => $workCode->data->workItemCode]);
         } else {
             $response = [
                 'status' => 'ERROR',
